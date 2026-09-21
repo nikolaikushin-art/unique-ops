@@ -1,0 +1,1108 @@
+/* =============================================================================
+   UNIQUE OPERATIONS — Apple visual layer
+   -----------------------------------------------------------------------------
+   Loaded LAST (after global.css and premium-system.css), so it wins the cascade
+   for every module — Overview, Orders, Bookings, Workshop board, Inspection,
+   Vehicles, Customers, Leads, Staff, Services, Finance, Mailbox, Inventory,
+   Reports, Settings and the auth screens.
+
+   The design language is ported from web-unique-detailing-ops (the iOS-style
+   studio app): layered surfaces, 16px cards, 12px controls, pill actions,
+   filled status pills, a 3px accent bar on the active nav item, frosted bars,
+   soft depth instead of hairline grids, springy press feedback, rounded
+   progress and ring gauges, and studio photography on vehicle rows.
+
+   Nothing here changes behaviour — only presentation.
+   ============================================================================= */
+
+/* ---- Inter, self-hosted (works offline, identical on every OS) ------------- */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-var.woff2') format('woff2-variations'), url('/fonts/inter-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =============================================================================
+   1. TOKENS
+   ============================================================================= */
+:root {
+  --font-system: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+
+  --ease-ios: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  --r-card: 16px;
+  --r-ctl: 12px;
+  --r-pill: 999px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Layered surface: canvas < panel < panel-2 (elevated) */
+  --bg: #f2f2f5;
+  --panel: #ffffff;
+  --panel-2: #f7f7fa;
+  --line: rgba(16, 16, 20, 0.07);
+  --line-strong: rgba(16, 16, 20, 0.12);
+
+  --shadow: 0 1px 2px rgba(16, 16, 20, 0.04), 0 8px 24px -12px rgba(16, 16, 20, 0.12);
+  --shadow-lg: 0 24px 60px -16px rgba(16, 16, 20, 0.28), 0 4px 12px -6px rgba(16, 16, 20, 0.1);
+  --shadow-hover: 0 1px 2px rgba(16, 16, 20, 0.05), 0 14px 32px -14px rgba(16, 16, 20, 0.22);
+
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-line: rgba(16, 16, 20, 0.08);
+  --focus-ring: 0 0 0 4px rgba(0, 113, 227, 0.18);
+}
+
+html[data-theme='dark'] {
+  --bg: #0a0a0c;
+  --panel: #17171b;
+  --panel-2: #1f1f24;
+  --line: rgba(255, 255, 255, 0.075);
+  --line-strong: rgba(255, 255, 255, 0.13);
+
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset, 0 10px 28px -14px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 28px 70px -14px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 16px 36px -14px rgba(0, 0, 0, 0.8);
+
+  --glass: rgba(20, 20, 24, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --focus-ring: 0 0 0 4px rgba(10, 132, 255, 0.28);
+}
+
+/* =============================================================================
+   2. BASE TYPE & MOTION
+   ============================================================================= */
+body {
+  font-family: var(--font-system);
+  letter-spacing: -0.011em;
+  font-feature-settings: 'cv11', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+h1, h2, h3, .page-title, .dash-hero-title, .side-title, .section-title, .modal-title { letter-spacing: -0.022em; }
+
+/* Money, time, counts and percentages align in columns. */
+.stat-value, .kpi-card .stat-value, .dash-hero-metric-value, .booking-time, .invoice-amount,
+.widget-stat-value, .comparison-current, .comparison-prev, .staff-pct, .data-table td,
+.ring-gauge-value, .shift-clock, .col-num, .cbtime, .stat-delta, .stat-note {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(button, [role='button'], .nav-item, .tag, .pill, .filter-pill, .seg-btn, .icon-btn, .link-btn, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Keyboard users always see where they are; a mouse click leaves no halo. */
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.field-input:focus-visible, .field-select:focus-visible, .search-input:focus-visible { outline: none; }
+
+@keyframes ap-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ap-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ap-sheet { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes ap-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes ap-sweep { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+
+/* Page content rises in, gently staggered — never bounces. */
+.app-page > *, .app-dashboard > * { animation: ap-rise 0.42s var(--ease-ios) both; }
+.app-page > *:nth-child(2), .app-dashboard > *:nth-child(2) { animation-delay: 0.04s; }
+.app-page > *:nth-child(3), .app-dashboard > *:nth-child(3) { animation-delay: 0.08s; }
+.app-page > *:nth-child(4), .app-dashboard > *:nth-child(4) { animation-delay: 0.12s; }
+.app-page > *:nth-child(n + 5), .app-dashboard > *:nth-child(n + 5) { animation-delay: 0.16s; }
+
+/* Thin scrollbars that stay out of the way. */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-2); background-clip: content-box; border: 2px solid transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* =============================================================================
+   3. SIDEBAR — frosted dark rail, 3px accent bar on the active item
+   ============================================================================= */
+.sidebar {
+  background: linear-gradient(180deg, #101013 0%, #0a0a0c 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.sidebar-head { border-bottom-color: rgba(255, 255, 255, 0.06); }
+.sidebar .nav-label {
+  border-radius: var(--r-ctl);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  padding: 9px 10px;
+}
+.sidebar .nav-label:hover { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.75); }
+
+.nav-item {
+  position: relative;
+  border-radius: var(--r-ctl);
+  font-weight: 500;
+  min-height: 42px;
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.18s var(--ease-ios);
+}
+.nav-item:active { transform: scale(0.98); }
+.nav-item.active { background: rgba(255, 255, 255, 0.09); font-weight: 600; }
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand);
+  transform: translateY(-50%);
+  animation: ap-fade 0.25s ease both;
+}
+
+/* iOS "Settings" idiom: a small coloured tile behind each glyph. */
+.nav-item-icon { border-radius: 9px; transition: background-color 0.16s ease, transform 0.2s var(--ease-spring); }
+.nav-item.active .nav-item-icon { background: var(--brand); color: #fff; box-shadow: 0 4px 12px -4px var(--accent-line); }
+.nav-item:hover .nav-item-icon { transform: scale(1.06); }
+
+.sidebar-collapse-btn, .sidebar-footer-theme, .sidebar-footer-logout { border-radius: var(--r-ctl); transition: background-color 0.16s ease, transform 0.15s ease; }
+.sidebar-collapse-btn:active, .sidebar-footer-theme:active, .sidebar-footer-logout:active { transform: scale(0.95); }
+.sidebar-footer { border-top-color: rgba(255, 255, 255, 0.06); }
+.sidebar-footer-avatar {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  color: #fff;
+}
+
+/* =============================================================================
+   4. TOPBAR — frosted glass over the canvas
+   ============================================================================= */
+.topbar {
+  background: var(--glass) !important;
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border-bottom: 1px solid var(--glass-line);
+  position: sticky;
+  top: 0;
+  /* Must stay BELOW the mobile drawer (50) and its overlay, or the bar paints
+     over the drawer's logo. */
+  z-index: 30;
+}
+.topbar-btn, .theme-toggle, .topbar-settings-btn, .desktop-nav-toggle, .topbar-mail-btn, .outlook-mail-topbar-btn {
+  border-radius: 50% !important;
+  transition: background-color 0.16s ease, transform 0.18s var(--ease-ios), border-color 0.16s ease;
+}
+.topbar-btn:active, .theme-toggle:active, .topbar-settings-btn:active, .outlook-mail-topbar-btn:active { transform: scale(0.93); }
+.topbar-settings-btn { background: var(--panel-2) !important; color: var(--text) !important; border: 1px solid var(--line) !important; }
+html[data-theme='dark'] .topbar-settings-btn { background: var(--panel-2) !important; }
+
+/* Search: an iOS search field — pill, filled, no heavy border. */
+.global-search input, .global-search-input, .topbar .search-input {
+  border-radius: var(--r-pill) !important;
+  background: var(--panel-2) !important;
+  border: 1px solid transparent !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+.global-search input:focus, .global-search-input:focus, .topbar .search-input:focus {
+  background: var(--panel) !important;
+  border-color: var(--info) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+.global-search-results, .global-search-panel, .global-search-dropdown { border-radius: var(--r-card); box-shadow: var(--shadow-lg); overflow: hidden; }
+
+.pill {
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  border-color: var(--line);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 14px;
+}
+.pill .dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); }
+.pill.qa { background: var(--text); color: var(--bg); border-color: transparent; font-weight: 600; transition: transform 0.18s var(--ease-ios), opacity 0.16s ease; }
+.pill.qa:hover { opacity: 0.88; border-color: transparent; color: var(--bg); }
+.pill.qa:active { transform: scale(0.96); }
+
+/* Unread badges: brand-filled with white numerals (were white-on-white). */
+.outlook-mail-topbar-badge, .mobile-bottom-nav-badge, .alerts-badge, .topbar-badge {
+  background: var(--brand) !important;
+  color: #fff !important;
+  border: 2px solid var(--panel);
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+
+/* Menus & popovers */
+.qa-menu, .user-menu-dropdown, .admin-settings-dropdown, .outlook-mail-topbar-menu, .alerts-dropdown, .notifications-dropdown {
+  border-radius: var(--r-card) !important;
+  border: 1px solid var(--line-strong) !important;
+  background: var(--glass) !important;
+  backdrop-filter: saturate(180%) blur(28px);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  box-shadow: var(--shadow-lg) !important;
+  overflow: hidden;
+}
+.qa-menu.open, .user-menu-dropdown, .admin-settings-dropdown { animation: ap-sheet 0.2s var(--ease-ios) both; transform-origin: top right; }
+.qa-menu-item, .user-menu-item { transition: background-color 0.14s ease; }
+.qa-menu-item:hover, .user-menu-item:hover { background: var(--surface-hover); }
+
+/* =============================================================================
+   5. PAGE HEADERS
+   ============================================================================= */
+.header-row { align-items: flex-end; margin-bottom: 28px; }
+.page-title { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: -0.03em; }
+.page-sub { color: var(--muted); font-size: 14.5px; }
+.eyebrow { font-weight: 600; font-size: 12px; }
+
+/* The short accent rule under section titles, echoing the studio wordmark. */
+.section-head { align-items: flex-end; }
+.section-title { position: relative; font-weight: 650; }
+.section-eyebrow { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* =============================================================================
+   6. SURFACES — 16px cards, soft depth, no hairline grids
+   ============================================================================= */
+.section-block, .stat-card, .kpi-card, .dashboard-widget, .chart-card, .account-card, .pcard, .cal-wrap,
+.integration-card, .staff-card, .permission-card, .service-card, .user-card, .shift-card, .list-card,
+.settings-panel, .settings-card, .analytics-panel, .finance-panel, .inspection-panel, .dash-hero,
+.setup-banner, .mfa-setup-banner, .security-status, .invite-info, .elevated-gate, .table-side,
+.side-panel, .detail-panel, .mobile-detail-panel {
+  border-radius: var(--r-card) !important;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.section-block, .dashboard-widget, .chart-card, .settings-panel, .settings-card { background: var(--panel); }
+
+/* Grids that used to be a 1px-gap "spreadsheet" become spaced cards. */
+.stat-grid, .quick-counters, .staff-grid, .kpi-grid {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  gap: 14px !important;
+}
+.stat-grid .stat-card, .kpi-card, .staff-grid .staff-card { border-radius: var(--r-card) !important; border: 1px solid var(--line) !important; }
+
+.stat-card, .kpi-card { padding: 22px 22px 18px; position: relative; transition: transform 0.18s var(--ease-ios), box-shadow 0.18s ease, border-color 0.18s ease; }
+@media (hover: hover) {
+  .kpi-card.clickable:hover, .stat-card.clickable:hover, .integration-card:hover, .staff-card:hover, .service-card:hover, .pcard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--line-strong) !important;
+  }
+}
+.kpi-card.clickable:active, .stat-card.clickable:active, .pcard:active { transform: scale(0.985); }
+
+.kpi-card-label, .stat-label { font-size: 13px; font-weight: 500; color: var(--muted); }
+.kpi-card-underline { height: 2px; width: 26px; border-radius: 999px; background: var(--brand); margin: 8px 0 12px; }
+.stat-value { font-size: clamp(24px, 2.4vw, 30px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.stat-delta { font-size: 12.5px; font-weight: 600; }
+.stat-note { font-size: 12.5px; color: var(--muted); }
+
+/* --- Quick counters: tinted icon tile + number (Apple Fitness-style tile) --- */
+.quick-counters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 20px; }
+.quick-counter.kpi-card {
+  border-radius: var(--r-card) !important;
+  padding: 16px 18px !important;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.quick-counter-icon {
+  width: 42px; height: 42px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 13px;
+  color: var(--tone, var(--brand));
+  background: color-mix(in srgb, var(--tone, var(--brand)) 14%, transparent);
+  transition: transform 0.25s var(--ease-spring);
+}
+.quick-counter:hover .quick-counter-icon { transform: scale(1.08) rotate(-3deg); }
+.quick-counter.tone-brand { --tone: var(--brand); }
+.quick-counter.tone-info { --tone: var(--info); }
+.quick-counter.tone-success { --tone: var(--success); }
+.quick-counter.tone-warning { --tone: var(--warning); }
+.quick-counter-body { display: flex; flex-direction: column-reverse; min-width: 0; }
+.quick-counter .stat-value { font-size: 26px; }
+.quick-counter .kpi-card-label { margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =============================================================================
+   7. DASHBOARD HERO
+   ============================================================================= */
+.dash-hero { background: var(--panel); overflow: hidden; }
+.dash-hero-title { font-size: clamp(28px, 3.4vw, 40px); font-weight: 700; letter-spacing: -0.035em; }
+.dash-hero-sub { color: var(--muted); }
+.dash-status-pill {
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  color: var(--success);
+  font-weight: 600;
+}
+.dash-hero-side { align-items: flex-end; }
+.dash-hero-gauge-row { display: flex; align-items: center; gap: 18px; }
+.dash-hero-metric {
+  border-radius: 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  transition: transform 0.18s var(--ease-ios);
+}
+.dash-hero-metric:hover { transform: translateY(-1px); }
+
+.dash-quick-row { gap: 12px; }
+.dash-quick-card {
+  border-radius: 14px !important;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  transition: transform 0.18s var(--ease-ios), box-shadow 0.18s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+@media (hover: hover) {
+  .dash-quick-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); background: var(--panel); border-color: var(--accent-line); }
+}
+.dash-quick-card:active { transform: scale(0.97); }
+.dash-quick-label { font-weight: 600; }
+.dash-quick-hint { color: var(--muted); }
+
+/* --- Ring gauge --- */
+.ring-gauge { position: relative; flex: none; }
+.ring-gauge-track { stroke: var(--panel-2); }
+html[data-theme='light'] .ring-gauge-track { stroke: rgba(16, 16, 20, 0.07); }
+.ring-gauge-fill { stroke: var(--brand); transition: stroke-dashoffset 0.9s var(--ease-ios); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand) 40%, transparent)); }
+.ring-gauge-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.ring-gauge-value { font-size: 19px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.ring-gauge-caption { font-size: 10.5px; color: var(--muted); font-weight: 500; }
+
+/* Shift card */
+.shift-card { background: var(--panel); border-radius: var(--r-card) !important; }
+
+/* Progress bars: rounded ends, calm fill. */
+.bar-track { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+html[data-theme='light'] .bar-track { background: rgba(16, 16, 20, 0.07); }
+.bar-fill { border-radius: 999px; transition: width 0.7s var(--ease-ios); }
+
+/* =============================================================================
+   8. BUTTONS — pills with springy press feedback
+   ============================================================================= */
+.btn-primary, .btn-secondary, .tag, .filter-pill, .seg-btn, .icon-btn, .link-btn, .pill.qa, .dash-quick-card, .side-action {
+  transition: transform 0.18s var(--ease-ios), background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
+}
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--brand) 70%, transparent);
+}
+@media (hover: hover) { .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); background: var(--brand); } }
+.btn-primary:active { transform: scale(0.97); filter: none; }
+.btn-primary:disabled { background: var(--panel-2); color: var(--muted-2); box-shadow: none; filter: none; }
+
+.btn-secondary { border-radius: var(--r-pill); background: var(--panel); border-color: var(--line-strong); font-weight: 600; }
+.btn-secondary:active { transform: scale(0.97); }
+
+.tag {
+  border-radius: var(--r-pill);
+  background: var(--panel);
+  border-color: var(--line-strong);
+  font-size: 12.5px;
+  font-weight: 550;
+  padding: 8px 14px;
+}
+.tag:active { transform: scale(0.96); }
+.tag.add { background: var(--text); color: var(--bg); border-color: transparent; font-weight: 600; }
+.tag.add:hover { background: var(--brand); color: #fff; border-color: transparent; }
+.tag.ghost { background: transparent; }
+.tag.red { background: color-mix(in srgb, var(--red) 10%, transparent); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
+.tag.blue { background: color-mix(in srgb, var(--info) 10%, transparent); border-color: color-mix(in srgb, var(--info) 28%, transparent); color: var(--info); }
+.tag.green { background: color-mix(in srgb, var(--green) 10%, transparent); border-color: color-mix(in srgb, var(--green) 28%, transparent); }
+.tag.amber { background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning); }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  padding: 0;
+  color: var(--muted-2);
+  background: var(--surface-hover);
+  border: 1px solid var(--line);
+}
+.icon-btn svg { display: block; }
+.icon-btn:hover { background: var(--line-strong); color: var(--text); border-color: var(--line-strong); }
+.icon-btn:active { transform: scale(0.9); }
+.icon-btn.danger { color: var(--red); }
+.icon-btn.danger:hover { background: color-mix(in srgb, var(--red) 14%, transparent); border-color: color-mix(in srgb, var(--red) 30%, transparent); color: var(--red); }
+.link-btn { font-weight: 600; }
+.link-btn:hover { color: var(--brand); }
+
+/* Segmented control (period selectors, view toggles) — the iOS pill track. */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: none !important;
+  border-radius: 12px !important;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.seg-btn { border: none !important; border-radius: 9px !important; padding: 8px 16px; font-size: 13px; font-weight: 550; color: var(--muted); background: transparent; display: inline-flex; align-items: center; gap: 6px; }
+.ops-tab-seg { flex-shrink: 0; align-self: flex-start; }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.active { background: var(--panel) !important; color: var(--text) !important; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px var(--line-strong); }
+html[data-theme='dark'] .seg-btn.active { background: #2c2c32 !important; }
+
+.filter-pill { border-radius: var(--r-pill); background: var(--panel); border-color: var(--line-strong); font-size: 13px; font-weight: 550; padding: 8px 16px; }
+.filter-pill.active { background: var(--text); color: var(--bg); border-color: transparent; }
+.filter-pill:active { transform: scale(0.96); }
+
+/* =============================================================================
+   9. FORMS — 12px controls, iOS focus ring
+   ============================================================================= */
+.field-input, .field-select, .search-input, .field textarea, textarea.field-input,
+.outlook-premium-compose-input, .outlook-premium-search-input {
+  border-radius: var(--r-ctl) !important;
+  background: var(--panel) !important;
+  border: 1px solid var(--line-strong) !important;
+  font-family: var(--font-system);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+html[data-theme='dark'] .field-input, html[data-theme='dark'] .field-select, html[data-theme='dark'] .search-input,
+html[data-theme='dark'] textarea.field-input { background: var(--panel-2) !important; }
+.field-input:focus, .field-select:focus, .search-input:focus, textarea.field-input:focus {
+  border-color: var(--info) !important;
+  box-shadow: var(--focus-ring) !important;
+  outline: none;
+}
+.field-input::placeholder, .search-input::placeholder { color: var(--muted-2); }
+.field-label, .side-field-label { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+input[type='checkbox'] { accent-color: var(--brand); width: 16px; height: 16px; border-radius: 5px; }
+input[type='radio'] { accent-color: var(--brand); }
+input[type='date'], input[type='datetime-local'], input[type='time'] { min-height: 44px; }
+
+/* iOS switch */
+.ios-switch { border-radius: 999px; transition: background-color 0.22s ease; }
+.ios-switch::after, .ios-switch-knob { transition: transform 0.26s var(--ease-spring); }
+
+/* =============================================================================
+   10. STATUS PILLS — filled, like the studio app
+   ============================================================================= */
+.status-badge, .priority-tag, .module-badge, .verification-status {
+  border: none !important;
+  border-radius: var(--r-pill) !important;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 5px 12px;
+  background: var(--badge-neutral, var(--panel-2));
+  color: var(--muted);
+}
+html[data-theme='light'] { --badge-neutral: rgba(16, 16, 20, 0.06); }
+
+.status-badge.progress, .status-badge.in_progress { background: var(--brand); color: #fff; }
+.status-badge.done, .status-badge.completed { background: var(--success); color: #fff; }
+.status-badge.confirmed { background: var(--warning); color: #fff; }
+.status-badge.vip { background: var(--info); color: #fff; }
+.status-badge.awaiting_approval { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+.status-badge.new_enquiry { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
+.status-badge.planned { background: var(--panel-2); color: var(--muted); }
+.status-badge.cancelled { background: var(--panel-2); color: var(--muted-2); text-decoration: line-through; }
+.status-badge { cursor: pointer; user-select: none; }
+.status-badge:active { transform: scale(0.94); }
+
+.priority-tag.priority-high { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.priority-tag.priority-urgent { background: var(--brand); color: #fff; }
+
+/* Unpaid / paid tags in tables use .status-badge with colour classes from JS */
+.status-badge.red { background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+.status-badge.blue { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
+.status-badge.green { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.status-badge.gold, .status-badge.amber { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+
+/* Workflow steps → rounded progress segments */
+.workflow-bar { gap: 3px; }
+.workflow-step { width: 9px; height: 5px; border-radius: 999px; border: none; background: var(--line-strong); transition: background-color 0.3s ease; }
+.workflow-step.done { background: var(--brand); }
+
+/* =============================================================================
+   11. LIST ROWS — each row is its own rounded card
+   ============================================================================= */
+.booking-row, .invoice-row {
+  border-radius: 14px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  margin-bottom: 10px !important;
+  padding: 14px 18px !important;
+  transition: transform 0.18s var(--ease-ios), box-shadow 0.18s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+@media (hover: hover) {
+  .booking-row:hover, .invoice-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); border-color: var(--line-strong) !important; background: var(--panel) !important; }
+}
+.booking-row:active { transform: scale(0.995); }
+.booking-row.row-selected, .booking-row.selected { border-color: var(--accent-line) !important; background: var(--surface-selected) !important; box-shadow: 0 0 0 3px var(--accent-soft); }
+.booking-time { font-weight: 650; }
+.booking-car { font-weight: 650; letter-spacing: -0.015em; }
+.booking-client, .booking-service, .booking-staff { color: var(--muted); }
+
+.activity-row {
+  border-radius: 14px;
+  padding: 12px 14px;
+  transition: background-color 0.16s ease, transform 0.18s var(--ease-ios);
+}
+@media (hover: hover) { .activity-row:hover { background: var(--surface-hover); } }
+.activity-row-icon, .list-row-icon {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tone, var(--info)) 14%, transparent);
+  color: var(--tone, var(--info));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.activity-row-icon.tone-brand, .list-row-icon.tone-brand { --tone: var(--brand); }
+.activity-row-icon.tone-info, .list-row-icon.tone-info { --tone: var(--info); }
+.activity-row-icon.tone-success, .list-row-icon.tone-success { --tone: var(--success); }
+.activity-row-icon.tone-warning, .list-row-icon.tone-warning { --tone: var(--warning); }
+.activity-row-title { font-weight: 600; letter-spacing: -0.01em; }
+
+/* Grouped list (iOS): rows share one card, hairline separators inset. */
+.list-card { border-radius: var(--r-card) !important; background: var(--panel); overflow: hidden; }
+.list-row { transition: background-color 0.14s ease; }
+@media (hover: hover) { .list-row:hover { background: var(--surface-hover); } }
+.list-row:active { background: var(--surface-selected); }
+.list-row-title { font-weight: 600; }
+.list-row-chevron { color: var(--muted-2); }
+.list-row.row-selected { background: var(--surface-selected); }
+
+/* --- Vehicle thumbnails (studio photography) --- */
+.with-thumb { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.with-thumb-text { min-width: 0; }
+.with-thumb-text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vthumb {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  display: inline-block;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2a3038, #12151a);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 4px 10px -6px rgba(0, 0, 0, 0.5);
+}
+.vthumb--xs { width: 30px; height: 30px; border-radius: 9px; }
+.vthumb--sm { width: 46px; height: 46px; }
+.vthumb--md { width: 60px; height: 60px; border-radius: 14px; }
+.vthumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s var(--ease-ios); }
+.vthumb-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.45)); }
+.vthumb-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255, 255, 255, 0.7); }
+.vthumb-fallback b { font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+.vthumb--xs .vthumb-fallback b { font-size: 13px; }
+.vthumb-plate { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 8.5px; font-weight: 600; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+@media (hover: hover) { .booking-row:hover .vthumb img, tr:hover .vthumb img, .pcard:hover .vthumb img, .list-row:hover .vthumb img { transform: scale(1.08); } }
+
+/* Workshop board card: photo + name side by side */
+.pcard { border-radius: 14px !important; padding: 14px !important; transition: transform 0.18s var(--ease-ios), box-shadow 0.18s ease, border-color 0.16s ease; }
+.pcard .pcar { margin-bottom: 10px; }
+.pcard .pname { margin-bottom: 2px; font-weight: 650; letter-spacing: -0.015em; }
+.pcard .pclient { color: var(--muted); }
+.pcard .pid { margin-bottom: 10px; }
+.pcard .pid span { background: var(--panel-2); border-radius: 6px; padding: 2px 7px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--muted); }
+.pcard .peta .advance { border-radius: 50%; background: var(--panel-2); width: 26px; height: 26px; display: inline-grid; place-items: center; transition: background-color 0.16s ease, color 0.16s ease, transform 0.18s var(--ease-spring); }
+.pcard .peta .advance:hover { background: var(--brand); color: #fff; transform: translateX(2px); }
+.pipeline-col { border-radius: var(--r-card); min-width: 0; overflow: hidden; }
+.pipeline-col-title { font-weight: 600; }
+.workflow-board-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pcard .pname, .pcard .pclient { overflow-wrap: anywhere; word-break: break-word; }
+
+/* =============================================================================
+   12. TABLES — rounded container, sticky header, gentle row hover
+   ============================================================================= */
+.table-wrap { background: transparent !important; border: none !important; box-shadow: none !important; gap: 16px !important; }
+.table-main, .table-scroll {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+/* Order/booking lists are stacks of row-cards, not one boxed table. */
+.jobs-table-scroll, .booking-timeline, .booking-timeline-scroll { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible; border-radius: 0; }
+.data-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.data-table thead th, thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px; font-weight: 600;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+}
+.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); transition: background-color 0.14s ease; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr { cursor: pointer; }
+@media (hover: hover) { .data-table tbody tr:hover td { background: var(--surface-hover); } }
+.data-table tbody tr.selected td, .data-table tbody tr.row-selected td { background: var(--surface-selected); }
+.cell-title { font-weight: 600; letter-spacing: -0.01em; }
+.cell-sub { color: var(--muted); font-size: 12.5px; }
+.col-vehicle .with-thumb { min-width: 200px; }
+
+/* Side detail panel: floating card with a soft edge. */
+.table-side, .side-panel, .detail-panel {
+  background: var(--panel);
+  border-radius: var(--r-card) !important;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: ap-sheet 0.28s var(--ease-ios) both;
+}
+.side-title { font-weight: 650; }
+.side-action { border-radius: var(--r-ctl); }
+.side-action:active { transform: scale(0.97); }
+.side-field-value { font-weight: 500; }
+
+/* Filter toolbar → one rounded card */
+.table-toolbar { border-radius: var(--r-card); }
+.filter-row { row-gap: 8px; }
+
+/* =============================================================================
+   13. CALENDAR & TIMELINE
+   ============================================================================= */
+.cal-wrap { background: var(--panel); overflow: auto; }
+.cal-head { background: var(--panel-2); }
+.cal-block { border-radius: 10px !important; transition: transform 0.16s var(--ease-ios), box-shadow 0.16s ease; }
+@media (hover: hover) { .cal-block:hover { transform: translateY(-1px) scale(1.01); box-shadow: var(--shadow-hover); z-index: 3; } }
+.cal-nav-btn, .cal-nav-today { border-radius: 50%; transition: background-color 0.16s ease, transform 0.15s ease; }
+.cal-nav-today { border-radius: var(--r-pill); }
+.cal-nav-btn:active, .cal-nav-today:active { transform: scale(0.94); }
+
+/* =============================================================================
+   14. MODALS — frosted backdrop, sheet that rises; bottom-sheet on phones
+   ============================================================================= */
+.modal-overlay {
+  background: rgba(8, 8, 12, 0.5);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+}
+.modal-overlay.open { animation: ap-fade 0.2s ease both; }
+.modal-box {
+  border-radius: 22px !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: var(--shadow-lg) !important;
+  background: var(--panel);
+}
+.modal-overlay.open .modal-box { animation: ap-sheet 0.3s var(--ease-ios) both; }
+.modal-header { padding-top: 18px; padding-bottom: 14px; }
+.modal-title { font-size: 17px; font-weight: 650; }
+.modal-close {
+  width: 30px; height: 30px; padding: 0 !important;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--panel-2);
+  transition: background-color 0.16s ease, transform 0.15s ease;
+}
+.modal-close:hover { background: var(--line-strong); color: var(--text); }
+.modal-close:active { transform: scale(0.9); }
+.modal-footer { background: transparent; }
+
+@media (max-width: 640px) {
+  .modal-overlay { align-items: flex-end !important; padding: 0 !important; }
+  .modal-box { width: 100% !important; max-width: 100% !important; border-radius: 22px 22px 0 0 !important; max-height: 92dvh; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .modal-overlay.open .modal-box { animation: ap-sheet-up 0.34s var(--ease-ios) both; }
+  .modal-box::before { content: ''; display: block; width: 38px; height: 5px; border-radius: 999px; background: var(--line-strong); margin: 8px auto 0; flex: none; }
+}
+
+/* =============================================================================
+   15. MOBILE — frosted tab bar with a pill for the active tab
+   ============================================================================= */
+.mobile-bottom-nav {
+  background: var(--glass) !important;
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-top: 1px solid var(--glass-line) !important;
+}
+.mobile-bottom-nav-item { position: relative; transition: transform 0.18s var(--ease-ios), color 0.16s ease; }
+.mobile-bottom-nav-item:active { transform: scale(0.92); }
+.mobile-bottom-nav-item.active::before { background: var(--brand); box-shadow: none; height: 3px; border-radius: 0 0 3px 3px; }
+.mobile-bottom-nav-item.active { color: var(--brand); }
+.mobile-bottom-nav-avatar { border-radius: 50%; }
+.mobile-bottom-nav-badge { min-width: 17px; height: 17px; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; }
+
+@media (max-width: 900px) {
+  .quick-counters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px !important; }
+  .quick-counter.kpi-card { padding: 14px !important; gap: 11px; }
+  .quick-counter-icon { width: 38px; height: 38px; border-radius: 12px; }
+  .quick-counter .stat-value { font-size: 22px; }
+  .dash-hero-gauge-row { width: 100%; justify-content: space-between; }
+  .dash-hero-side { align-items: stretch; width: 100%; }
+  .booking-row { padding: 12px 14px !important; }
+  .page-title { font-size: 26px; }
+}
+
+/* =============================================================================
+   16. SETTINGS, INTEGRATIONS, STAFF, SERVICES
+   ============================================================================= */
+.integration-card { background: var(--panel); border-radius: var(--r-card) !important; padding: 20px 22px; margin-bottom: 12px; }
+.integration-name { font-weight: 600; letter-spacing: -0.01em; }
+.integration-desc { color: var(--muted); }
+.settings-row, .module-row, .settings-option, .security-option {
+  border-radius: 14px;
+  transition: background-color 0.14s ease;
+}
+@media (hover: hover) { .settings-row:hover, .module-row:hover, .settings-option:hover { background: var(--surface-hover); } }
+.settings-tab { border-radius: var(--r-pill); transition: background-color 0.16s ease, color 0.16s ease, transform 0.15s ease; }
+.settings-tab.active { background: var(--text); color: var(--bg); }
+.settings-tab:active { transform: scale(0.96); }
+.settings-search input { border-radius: var(--r-pill) !important; }
+.staff-card { background: var(--panel); padding: 20px; }
+.staff-top { gap: 14px; }
+.staff-name { font-weight: 650; letter-spacing: -0.015em; }
+.staff-role { color: var(--muted); }
+.avatar, .staff-avatar, .user-card-avatar, .account-avatar, .settings-profile-avatar {
+  border-radius: 50%;
+}
+.service-card { background: var(--panel); }
+
+/* Alerts & banners */
+.dashboard-alert, .alerts-item, .booking-conflict-warn, .setup-banner, .mfa-setup-banner {
+  border-radius: 14px !important;
+}
+.auth-error, .auth-success { border-radius: var(--r-ctl); }
+
+/* =============================================================================
+   17. INSPECTION, INVENTORY, FINANCE, REPORTS
+   ============================================================================= */
+.inspection-check-row, .inspection-history-item, .inspection-pending-item, .damage-map, .photo-gallery img, .asset-thumb {
+  border-radius: 12px;
+}
+.inspection-workflow-bar, .inspection-workflow { border-radius: var(--r-card); }
+.v-tl-step .num { border-radius: 50%; }
+.finance-list .invoice-row { margin-bottom: 8px !important; }
+.invoice-amount { font-weight: 650; letter-spacing: -0.02em; }
+.bar-chart, .bar-chart-wrap { border-radius: var(--r-card); }
+.bar-chart .bar, .bar-chart-bar { border-radius: 6px 6px 0 0; }
+.analytics-panel, .analytics-row { border-radius: var(--r-card); }
+.comparison-item { border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line); padding: 14px 16px; }
+
+/* Skeletons: a calm sweep, never a spinner. */
+.skeleton, .dash-hero-shimmer, .outlook-premium-skeleton-line, .mailbox-skeleton-line {
+  background: linear-gradient(90deg, var(--panel-2) 25%, color-mix(in srgb, var(--panel-2) 55%, transparent) 37%, var(--panel-2) 63%);
+  background-size: 400% 100%;
+  animation: ap-sweep 1.4s ease infinite;
+  border-radius: 10px;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 36px 20px;
+  text-align: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+}
+.table-main .empty-state, .table-scroll .empty-state, .list-card .empty-state { border: none; background: transparent; }
+
+/* =============================================================================
+   18. MAILBOX
+   ============================================================================= */
+.outlook-premium-panel, .outlook-premium-shell, .outlook-mail-shell { border-radius: var(--r-card); }
+.outlook-premium-list-row { border-radius: 12px; transition: background-color 0.14s ease; }
+.outlook-premium-list-avatar { border-radius: 50% !important; }
+.outlook-premium-icon-btn, .outlook-premium-compose-btn { border-radius: 50%; transition: background-color 0.16s ease, transform 0.15s ease; }
+.outlook-premium-icon-btn:active { transform: scale(0.92); }
+.mailbox-folder-item, .mailbox-folder { border-radius: 10px; }
+.mailbox-type-badge { border-radius: var(--r-pill); }
+
+/* =============================================================================
+   19. AUTH
+   ============================================================================= */
+.auth-page--dark, .auth-page {
+  background:
+    radial-gradient(1000px 500px at 50% -10%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 60%),
+    #0a0a0c;
+}
+.auth-box {
+  border-radius: 24px !important;
+  padding: 40px 34px;
+  background: rgba(23, 23, 27, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  animation: ap-sheet 0.5s var(--ease-ios) both;
+}
+.auth-box .btn-primary { height: 50px; font-size: 15.5px; }
+.auth-title { font-weight: 700; letter-spacing: -0.03em; }
+
+/* =============================================================================
+   20. ELEVATED GATE / REAUTH / TOASTS
+   ============================================================================= */
+.toast, .toast-item, .toast-container > div {
+  border-radius: 16px !important;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-lg);
+  animation: ap-sheet 0.3s var(--ease-ios) both;
+}
+
+/* =============================================================================
+   21. RESPECT THE SYSTEM: someone who asked to stop animating means it
+   ============================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  .topbar, .sidebar, .mobile-bottom-nav { display: none !important; }
+  .app-page > *, .app-dashboard > * { animation: none !important; }
+}
+
+/* User menu trigger: pill, not a square box. */
+.user-menu-trigger, .user-menu-btn, .user-menu-toggle, .user-trigger, .user-menu-wrap > button {
+  border-radius: var(--r-pill) !important;
+  border: 1px solid var(--line) !important;
+  background: var(--panel-2) !important;
+  transition: background-color 0.16s ease, transform 0.15s ease;
+}
+.user-menu-trigger:active, .user-menu-btn:active, .user-menu-wrap > button:active { transform: scale(0.96); }
+
+/* =============================================================================
+   22. FOLLOW-UP PASS
+   ============================================================================= */
+/* Order/booking rows: car names may take two lines instead of being cut hard. */
+.with-thumb-text .booking-car, .with-thumb-text .cell-title, .with-thumb-text .pname {
+  white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;
+}
+
+/* Stat grids adapt to the number of cards (no lonely fifth card). */
+.stat-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important; }
+.pipeline-stats-scroll .stat-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)) !important; }
+
+/* Tinted icon tiles everywhere (beat the older solid-colour tone rules). */
+.list-row-icon[class*='tone-'], .activity-row-icon[class*='tone-'] {
+  background: color-mix(in srgb, var(--tone, var(--info)) 15%, transparent);
+  color: var(--tone, var(--info));
+}
+.list-row-icon.tone-gray, .activity-row-icon.tone-gray { --tone: var(--muted); }
+.list-row-icon[style*='background'] { color: #fff !important; }
+
+/* Inventory stock level bar */
+.stock-bar { height: 4px; width: 72px; margin: 6px 0 0 auto; border-radius: 999px; background: var(--line-strong); overflow: hidden; }
+.stock-bar span { display: block; height: 100%; border-radius: 999px; background: var(--success); transition: width 0.6s var(--ease-ios); }
+.stock-bar span.low { background: var(--brand); }
+
+/* Empty states get a calm tray glyph. */
+.empty-state::before {
+  content: ''; display: block; width: 38px; height: 38px; margin: 0 auto 12px; border-radius: 12px;
+  background-color: var(--muted-2); opacity: 0.55;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Staff workload bar: colour follows the load. */
+.staff-card .bar-fill { background: var(--info); }
+.staff-card .bar-fill[style*='width: 8'], .staff-card .bar-fill[style*='width: 9'], .staff-card .bar-fill[style*='width: 100'] { background: var(--warning); }
+
+/* Overview schedule row: thumbnail sits between the time tile and the text. */
+.activity-row .vthumb { margin-right: 2px; }
+
+@media (max-width: 900px) {
+  .quick-counter .kpi-card-label { white-space: normal; font-size: 12px; line-height: 1.2; }
+  .seg { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg-btn { flex: none; white-space: nowrap; min-height: 40px; }
+  .btn-primary, .btn-secondary, .tag, .filter-pill, .icon-btn { min-height: 40px; }
+  .activity-row .vthumb { display: none; }
+}
+
+/* =============================================================================
+   23. MOBILE POLISH PASS
+   ============================================================================= */
+.stat-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; }
+.header-row .tag, .header-row .btn-primary, .header-row .btn-secondary, .header-row .pill { white-space: nowrap; }
+
+/* 2FA banner: message left, dismiss button pinned top-right (no orphan row). */
+.mfa-setup-banner { position: relative; align-items: flex-start; }
+.mfa-setup-banner-dismiss {
+  border-radius: 50% !important;
+  width: 28px; height: 28px; padding: 0 !important;
+  display: grid; place-items: center; flex: none;
+  background: var(--panel-2) !important;
+}
+@media (max-width: 900px) {
+  .mfa-setup-banner { padding-right: 46px !important; }
+  .mfa-setup-banner-dismiss { position: absolute; top: 10px; right: 10px; }
+
+  /* Period selectors and pill rows scroll sideways instead of wrapping. */
+  .period-selector, .filter-row.inline { flex-wrap: nowrap !important; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 2px; }
+  .period-selector::-webkit-scrollbar, .filter-row.inline::-webkit-scrollbar { display: none; }
+  .period-selector .filter-pill, .filter-row.inline .filter-pill { flex: none; white-space: nowrap; }
+
+  /* Workshop-board counters: one scrollable strip, not a ragged wrap. */
+  .pipeline-stats-scroll .stat-grid {
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(112px, 1fr);
+    min-width: 0 !important;
+  }
+  .pipeline-stats-scroll { margin-bottom: 20px; }
+}
+
+@media (max-width: 900px) {
+  .dash-hero-gauge-row { flex-wrap: wrap; justify-content: flex-start; gap: 14px; }
+  .dash-hero-gauge-row .dash-hero-metrics { flex: 1 1 200px; min-width: 0; }
+  .dash-hero-gauge-row .dash-hero-metric { flex: 1; min-width: 0; }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Settings — macOS-style master/detail split. The row list stays on the  */
+/* left and the selected section renders inline in the remaining width to */
+/* the right — no overlay, no backdrop, no dead space next to a narrow    */
+/* fixed-width panel floating over a dimmed page.                         */
+/* ---------------------------------------------------------------------- */
+.settings-split {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+.settings-list-pane {
+  width: 100%;
+  flex-shrink: 0;
+}
+.settings-list-pane .settings-shell { max-width: none; }
+
+.settings-detail-pane {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.settings-detail-pane.open { display: block; }
+
+.settings-detail-head { display: flex; padding-bottom: 6px; }
+.settings-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: var(--info);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 4px;
+  margin-left: -4px;
+}
+.settings-detail-back:hover { opacity: 0.75; }
+.settings-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 20px;
+}
+.settings-detail-title { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 0; color: var(--text); }
+.settings-detail-body { min-width: 0; }
+.settings-detail-body .settings-shell,
+.settings-detail-body .header-row { display: contents; }
+
+.settings-detail-empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 420px;
+  color: var(--muted-2);
+  text-align: center;
+}
+.settings-detail-empty p { margin: 0; font-size: 14px; }
+
+.settings-row-active { background: var(--surface-selected); }
+
+/* Below the split breakpoint there isn't room for two columns: the list
+   and the detail behave as two full-width screens, list hides once a
+   row is open, and the back button in the detail head returns to it. */
+@media (max-width: 899px) {
+  .settings-list-pane.has-detail { display: none; }
+}
+
+@media (min-width: 900px) {
+  .settings-split { gap: 40px; }
+  .settings-list-pane { width: 420px; }
+  /* The page itself must not scroll for this screen: the column is sized in
+     SettingsPage to exactly the room left under the top bar (padding included),
+     so nothing can drift up underneath the header. Layout is header (fixed) +
+     body (the only thing that scrolls). */
+  .settings-detail-pane,
+  .settings-detail-pane.open {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+    border-left: 1px solid var(--line);
+    position: sticky;
+    top: var(--settings-stick-top, 16px);
+    align-self: flex-start;
+    max-height: var(--settings-stick-h, calc(100dvh - 120px));
+    min-height: 0;
+  }
+  .settings-detail-pane:not(.open) .settings-detail-empty { display: flex; }
+  .settings-detail-head { display: none; }
+  /* Section title: a fixed header, not an overlay — content is clipped by the
+     scroll area below it instead of sliding beneath an opaque bar. */
+  .settings-detail-title-row {
+    flex: none;
+    position: static;
+    padding: 6px 0;
+  }
+  .settings-detail-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    /* Side padding keeps card shadows/borders from being cut by the scroller. */
+    margin: 0 -8px;
+    padding: 0 8px;
+  }
+  /* Soft edges: the in-flow spacers double as the padding at rest, and stick to
+     the top / bottom of the scroller to fade content out while it scrolls. */
+  .settings-detail-body::before,
+  .settings-detail-body::after {
+    content: '';
+    display: block;
+    height: 16px;
+    position: sticky;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .settings-detail-body::before { top: 0; background: linear-gradient(to bottom, var(--bg), transparent); }
+  .settings-detail-body::after { bottom: 0; margin-top: 8px; background: linear-gradient(to top, var(--bg), transparent); }
+  /* No dead 72px under the page — the settings screen uses the full height. */
+  .content:has(.settings-split) { padding-bottom: 28px; }
+}
+
+/* Sub-panels inside the detail pane were designed for a full-width page;
+   force their multi-column grids down to something that fits the
+   remaining column width instead of getting crushed at ~600-700px. */
+.settings-detail-body .stat-grid,
+.settings-detail-body .kpi-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+@media (max-width: 480px) {
+  .settings-detail-body .stat-grid,
+  .settings-detail-body .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Async data (useLocalQuery) and lazy route chunks can grow page height
+   after the initial paint. Without this, Chrome's scroll anchoring
+   "helpfully" shifts the viewport to keep some element in place, which
+   looks like a page opening scrolled halfway down instead of at the top. */
+.main, .main-area, .content, .app-page {
+  overflow-anchor: none;
+}

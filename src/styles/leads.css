@@ -1,0 +1,516 @@
+/* ============================================================
+   LEADS MODULE — list / board / tasks / detail sheet
+   Scoped with .ld-* so no other module is affected.
+
+   Design rules used everywhere below:
+   · one surface language — filled controls (no heavy outlines),
+     20px cards, 12px controls, pill statuses
+   · secondary text always sits on a second line, never in a
+     second column, so rows keep one height
+   · native <select> arrows are hidden and replaced by one chevron
+   · the detail sheet is an iOS grouped list: quiet title, white
+     card, hairline-separated rows
+   ============================================================ */
+.ld-page, .ld-drawer {
+  --ld-r-card: 20px;
+  --ld-r-ctl: 12px;
+  --ld-fill: color-mix(in srgb, var(--text) 6%, transparent);
+  --ld-fill-2: color-mix(in srgb, var(--text) 10%, transparent);
+  /* Detail sheet: light theme keeps the gray canvas with white cards; dark theme
+     uses the SAME panel gray as the list card next to it, with lighter cards. */
+  --ld-sheet: var(--bg);
+  --ld-card: var(--panel);
+}
+html[data-theme='dark'] .ld-page, html[data-theme='dark'] .ld-drawer {
+  --ld-sheet: var(--panel);
+  --ld-card: color-mix(in srgb, var(--text) 7%, var(--panel));
+}
+html[data-theme='dark'] .ld-drawer { border-color: var(--line); }
+.ld-page { display: block; }
+.ld-muted { color: var(--muted); font-size: 12.5px; }
+.ld-spacer { flex: 1; }
+.ld-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; flex: none; }
+.ld-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--c-blue); cursor: pointer; }
+.ld-link:hover { opacity: .75; }
+.ld-ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ld-page :focus-visible, .ld-drawer :focus-visible { outline: 2px solid var(--info, var(--c-blue)); outline-offset: 2px; }
+
+/* ---------- toolbar ---------- */
+.ld-toolbar { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); background: var(--panel); border: 1px solid var(--line); border-radius: var(--ld-r-card); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; scroll-margin-top: 12px; }
+.ld-toolbar-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ld-toolbar-row.is-top { flex-wrap: wrap; }
+.ld-toolbar-row.is-view { justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ld-toolbar-row.is-saved { flex-wrap: wrap; }
+
+.ld-searchbox { position: relative; flex: 1 1 260px; min-width: 220px; display: flex; align-items: center; }
+.ld-searchbox > svg { position: absolute; left: 14px; color: var(--muted-2); pointer-events: none; }
+.ld-searchbox input { width: 100%; height: 44px; padding: 0 40px; border: 1px solid transparent; border-radius: 14px; background: var(--ld-fill); color: var(--text); font: inherit; font-size: 14px; outline: none; box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.ld-searchbox input::placeholder { color: var(--muted-2); }
+.ld-searchbox input:focus { background: var(--panel); border-color: var(--c-blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-blue) 18%, transparent); }
+.ld-searchbox-clear { position: absolute; right: 10px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--text) 22%, transparent); color: var(--panel); cursor: pointer; }
+.ld-searchbox-clear:hover { background: color-mix(in srgb, var(--text) 32%, transparent); }
+
+.ld-selects { display: flex; flex: 0 0 auto; gap: 8px; max-width: 100%; }
+
+/* native select → filled control with a single chevron */
+.ld-select-wrap { position: relative; display: inline-flex; min-width: 0; max-width: 100%; }
+.ld-select { -webkit-appearance: none; appearance: none; height: 40px; max-width: 100%; padding: 0 34px 0 14px; border: 1px solid transparent; border-radius: var(--ld-r-ctl); background: var(--ld-fill); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; outline: none; text-overflow: ellipsis; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.ld-select:hover { background: var(--ld-fill-2); }
+.ld-select:focus-visible { border-color: var(--c-blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-blue) 18%, transparent); outline: none; }
+.ld-select option { background: var(--panel); color: var(--text); }
+.ld-select-chev { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.ld-select-wrap.is-set .ld-select { background: color-mix(in srgb, var(--c-blue) 14%, transparent); color: var(--c-blue); font-weight: 600; }
+.ld-select-wrap.is-set .ld-select-chev { color: var(--c-blue); }
+
+/* segmented control (iOS) */
+.ld-seg { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 11px; background: var(--ld-fill); }
+.ld-seg button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
+.ld-seg button:hover:not(.is-active) { color: var(--text); }
+.ld-seg button.is-active { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .05); }
+.ld-seg button b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted-2); }
+.ld-seg button:disabled { color: var(--muted-2); cursor: default; }
+/* full-width variant used for status + quick filters: items share the row evenly and scroll sideways only if they cannot fit */
+.ld-seg.is-wide { display: flex; width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ld-seg.is-wide::-webkit-scrollbar { display: none; }
+.ld-seg.is-wide button { flex: 1 1 auto; flex-shrink: 0; justify-content: center; padding: 0 12px; white-space: nowrap; }
+.ld-seg.is-wide button.is-active b { color: var(--pill, var(--c-blue)); }
+html[data-theme='dark'] .ld-seg button.is-active { background: #3a3a40; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+
+.ld-chip { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.ld-chip b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+.ld-chip:hover:not(:disabled):not(.is-active) { background: var(--ld-fill); }
+.ld-chip.is-active { background: var(--c-blue); border-color: var(--c-blue); color: #fff; }
+.ld-chip.is-active b { color: rgba(255, 255, 255, .85); }
+/* zero-count filters stay in place (no jumping layout) but go quiet */
+.ld-chip.is-dim, .ld-chip:disabled { border-color: transparent; color: var(--muted-2); cursor: default; }
+.ld-chip.is-dim b, .ld-chip:disabled b { color: var(--muted-2); }
+.ld-chip.is-ghost { border-style: dashed; color: var(--muted); }
+.ld-chip.is-saved { padding: 0; gap: 0; overflow: hidden; }
+.ld-chip.is-saved button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.ld-chip-main { padding: 0 6px 0 12px; height: 100%; }
+.ld-chip-x { display: inline-grid; place-items: center; padding: 0 10px 0 4px; height: 100%; color: var(--muted); }
+
+.ld-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.ld-summary b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ld-active-filter { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--c-blue) 14%, transparent); color: var(--c-blue); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.ld-active-filter:hover { background: color-mix(in srgb, var(--c-blue) 22%, transparent); }
+
+/* ---------- buttons ---------- */
+.ld-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; padding: 0 16px; border: 0; border-radius: var(--ld-r-ctl); background: var(--ld-fill); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background-color .15s ease, transform .15s var(--ease-ios, ease), opacity .15s ease; }
+.ld-btn:hover:not(:disabled) { background: var(--ld-fill-2); }
+.ld-btn:active:not(:disabled) { transform: scale(.97); }
+.ld-btn:disabled { opacity: .4; cursor: default; }
+.ld-btn.is-primary { background: var(--text); color: var(--bg); }
+.ld-btn.is-primary:hover:not(:disabled) { background: var(--text); opacity: .88; }
+.ld-btn.is-danger { background: color-mix(in srgb, var(--c-red) 12%, transparent); color: var(--c-red); }
+.ld-btn.is-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--c-red) 20%, transparent); }
+.ld-btn.is-ghost { background: transparent; color: var(--muted); }
+.ld-btn.is-block { width: 100%; height: 46px; border-radius: 14px; font-size: 15px; }
+.ld-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--muted); text-decoration: none; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.ld-icon-btn:hover { background: var(--ld-fill-2); color: var(--text); }
+.ld-icon-btn.is-danger:hover { background: color-mix(in srgb, var(--c-red) 14%, transparent); color: var(--c-red); }
+
+/* bulk actions: frosted bar that follows you down the list */
+.ld-bulk { position: sticky; top: 12px; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid var(--glass-line, var(--line)); border-radius: 18px; background: var(--glass, var(--panel)); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: var(--shadow-lg); }
+.ld-bulk-label { padding: 0 2px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.ld-bulk-end { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.ld-bulk .ld-btn { height: 36px; }
+.ld-bulk .ld-select { height: 36px; }
+.ld-bulk-count { padding: 0 6px 0 4px; font-size: 13.5px; font-weight: 700; color: var(--c-blue); white-space: nowrap; }
+@media (max-width: 1023px) { .ld-bulk { top: 64px; } }
+
+/* ---------- pills / flags / score / avatar ---------- */
+.ld-pill { --pill: var(--c-blue); display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 24px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; border-radius: 999px; background: color-mix(in srgb, var(--pill) 14%, transparent); color: var(--pill); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ld-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--pill); flex: none; }
+.ld-flags { display: inline-flex; flex-wrap: nowrap; gap: 4px; margin-right: 0; }
+.ld-flag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; background: var(--ld-fill); color: var(--muted); font-size: 10.5px; font-weight: 700; white-space: nowrap; text-transform: none; }
+.ld-flag.is-red { color: var(--c-red); background: color-mix(in srgb, var(--c-red) 14%, transparent); }
+.ld-flag.is-orange { color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 15%, transparent); }
+.ld-flag.is-blue { color: var(--c-blue); background: color-mix(in srgb, var(--c-blue) 14%, transparent); }
+.ld-flag.is-gray { color: var(--muted); }
+.ld-drawer-badges .ld-flag { height: 22px; font-size: 11.5px; }
+
+.ld-score { --tone: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
+.ld-score b { min-width: 20px; color: var(--tone); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ld-score-bar { display: block; width: 34px; height: 4px; border-radius: 99px; background: var(--ld-fill-2); overflow: hidden; }
+.ld-score-bar i { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+.ld-score.is-red { --tone: var(--c-red); }
+.ld-score.is-orange { --tone: var(--c-orange); }
+.ld-score.is-blue { --tone: var(--c-blue); }
+.ld-score.is-gray { --tone: var(--muted-2); }
+
+.ld-avatar { --tone: var(--c-gray); display: inline-flex; align-items: center; justify-content: center; flex: none; width: 46px; height: 46px; border-radius: 50%; background: color-mix(in srgb, var(--tone) 16%, transparent); color: var(--tone); font-size: 15px; font-weight: 700; }
+.ld-avatar.is-sm { width: 36px; height: 36px; font-size: 12px; }
+.ld-avatar.is-lg { width: 64px; height: 64px; font-size: 22px; }
+.ld-avatar.is-red { --tone: var(--c-red); }
+.ld-avatar.is-orange { --tone: var(--c-orange); }
+.ld-avatar.is-blue { --tone: var(--c-blue); }
+
+/* iOS-style round checkbox (input.ld-check beats the global checkbox rule) */
+.ld-page input.ld-check { -webkit-appearance: none; appearance: none; display: inline-block; flex: none; width: 18px; height: 18px; margin: 0; padding: 0; border: 1.5px solid color-mix(in srgb, var(--text) 30%, transparent); border-radius: 50%; background: transparent; cursor: pointer; vertical-align: middle; transition: background-color .12s ease, border-color .12s ease; }
+.ld-page input.ld-check:hover { border-color: color-mix(in srgb, var(--text) 50%, transparent); }
+.ld-page input.ld-check:checked { border-color: var(--c-blue); background: var(--c-blue) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2.6 6.3l2.2 2.2 4.6-4.9' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / 11px no-repeat; }
+
+/* ---------- list ---------- */
+.ld-card-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--ld-r-card); box-shadow: var(--shadow); overflow: hidden; }
+.ld-table-scroll { overflow-x: auto; }
+.ld-page .ld-table { width: 100%; min-width: 980px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+.ld-page .ld-table thead th { position: static; height: 44px; padding: 0 10px; border-bottom: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0; text-align: left; text-transform: none; white-space: nowrap; }
+.ld-page .ld-table thead th:first-child, .ld-page .ld-table tbody td:first-child { padding-left: 16px; }
+.ld-page .ld-table thead th:last-child, .ld-page .ld-table tbody td:last-child { padding-right: 14px; }
+.ld-page .ld-table tbody td { height: 64px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: transparent; font-size: 13px; vertical-align: middle; overflow: hidden; white-space: nowrap; }
+.ld-page .ld-table tbody tr:last-child td { border-bottom: 0; }
+.ld-page .ld-table tbody tr { cursor: pointer; }
+@media (hover: hover) { .ld-page .ld-table tbody tr:hover td { background: var(--surface-hover, var(--ld-fill)); } }
+.ld-page .ld-table tbody tr.selected td { background: color-mix(in srgb, var(--c-blue) 8%, transparent); }
+.ld-page .ld-table tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--c-blue); }
+.ld-page .ld-table .ld-th-check, .ld-page .ld-table .ld-td-check { padding-left: 16px; padding-right: 0; }
+.ld-page .ld-table .ld-th-num, .ld-page .ld-table .ld-td-num { text-align: right; }
+.ld-page .ld-table .ld-td-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.ld-sortable { cursor: pointer; user-select: none; }
+.ld-sortable:hover { color: var(--text); }
+.ld-sortable svg { margin-left: 4px; vertical-align: -2px; }
+
+.ld-lead-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ld-lead-text { display: grid; gap: 3px; min-width: 0; }
+.ld-lead-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.ld-lead-name .ld-flags { flex: none; }
+.ld-lead-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.ld-lead-sub > span + span::before { content: '·'; margin: 0 5px; color: var(--muted-2); }
+.ld-source-cell { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.ld-source-cell svg { flex: none; }
+.ld-stack { display: grid; gap: 3px; min-width: 0; }
+.ld-sub { font-size: 12px; color: var(--muted); }
+.ld-overdue { color: var(--c-red); font-weight: 600; }
+.ld-row-actions { display: inline-flex; justify-content: flex-end; gap: 2px; opacity: 0; transition: opacity .15s ease; }
+.ld-page .ld-table tbody tr:hover .ld-row-actions, .ld-page .ld-table tbody tr:focus-within .ld-row-actions, .ld-page .ld-table tbody tr.selected .ld-row-actions { opacity: 1; }
+@media (hover: none) { .ld-row-actions { opacity: 1; } }
+.ld-page .ld-table .ld-td-actions { text-align: right; }
+
+.ld-mobile-only { display: none; }
+@media (max-width: 900px) { .ld-desktop-only { display: none; } .ld-mobile-only { display: block; } }
+.ld-mrow { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ld-mrow:last-child { border-bottom: 0; }
+.ld-mrow:active { background: var(--ld-fill); }
+.ld-mrow-main { flex: 1; min-width: 0; }
+.ld-mrow-title { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.ld-mrow-sub { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.ld-mrow-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+.ld-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px 20px; text-align: center; }
+.ld-empty-title { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.ld-empty .ld-muted { max-width: 560px; line-height: 1.5; }
+
+/* ---------- board ---------- */
+.ld-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); gap: 12px; align-items: start; overflow-x: auto; padding-bottom: 12px; }
+.ld-col { min-height: 220px; padding: 12px; border: 1px solid var(--line); border-radius: var(--ld-r-card); background: color-mix(in srgb, var(--text) 3%, var(--panel)); transition: border-color .15s ease, background-color .15s ease; }
+.ld-col.is-over { border-color: var(--c-blue); background: color-mix(in srgb, var(--c-blue) 7%, var(--panel)); }
+.ld-col-head { --pill: var(--c-blue); display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; }
+.ld-col-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; }
+.ld-col-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: color-mix(in srgb, var(--pill) 16%, transparent); color: var(--pill); font-size: 11px; font-weight: 700; }
+.ld-col-count { padding: 2px 9px; border-radius: 999px; background: var(--ld-fill); color: var(--muted); font-size: 12px; font-weight: 700; }
+.ld-col-sum { padding: 0 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.ld-col-body { display: grid; gap: 8px; }
+.ld-col-empty { padding: 24px 8px; border: 1px dashed var(--line-strong); border-radius: 14px; color: var(--muted-2); font-size: 12px; text-align: center; }
+.ld-card { display: grid; gap: 7px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); cursor: pointer; transition: transform .15s var(--ease-ios, ease), box-shadow .15s ease; }
+.ld-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover, var(--shadow)); }
+.ld-card.is-drag { opacity: .4; }
+.ld-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ld-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 650; }
+.ld-card-car { font-size: 12.5px; color: var(--muted); }
+.ld-card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.ld-card-next { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
+.ld-card-next.is-overdue { color: var(--c-red); font-weight: 600; }
+.ld-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.ld-owner { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--ld-fill-2); color: var(--muted); font-size: 9.5px; font-weight: 700; }
+.ld-card-move { display: inline-flex; gap: 4px; margin-left: auto; }
+.ld-card-move button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 8px; background: var(--ld-fill); color: var(--muted); cursor: pointer; }
+.ld-card-move button:hover { background: var(--ld-fill-2); color: var(--text); }
+
+/* ---------- tasks ---------- */
+.ld-tasks { display: grid; gap: 14px; }
+.ld-task-group { overflow: hidden; border: 1px solid var(--line); border-radius: var(--ld-r-card); background: var(--panel); box-shadow: var(--shadow); }
+.ld-task-head { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; }
+.ld-task-head b { padding: 1px 8px; border-radius: 999px; background: var(--ld-fill); color: var(--muted); font-size: 12px; }
+.ld-task-head.is-red { color: var(--c-red); } .ld-task-head.is-orange { color: var(--c-orange); } .ld-task-head.is-blue { color: var(--c-blue); }
+.ld-task { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ld-task:last-child { border-bottom: 0; }
+.ld-task:hover { background: var(--surface-hover, var(--ld-fill)); }
+.ld-task-main { flex: 1 1 260px; min-width: 0; }
+.ld-task-title { font-size: 14.5px; font-weight: 650; }
+.ld-task-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 12.5px; color: var(--muted); }
+.ld-task-actions { display: flex; align-items: center; gap: 6px; }
+
+/* ---------- list/board/tasks + detail panel, side by side (same split
+   layout as Customers/Vehicles/Jobs: .table-wrap > .table-main + .table-side) ---------- */
+.ld-split { display: flex; align-items: flex-start; gap: 16px; }
+.ld-split-main { flex: 1; min-width: 0; }
+/* Expanded: the panel's own "maximize" button hides the list and lets the
+   detail take the full row — same side-by-side layout underneath, just
+   toggled, so nothing about the list/board is torn down or re-mounted. */
+.ld-split.is-expanded .ld-split-main { display: none; }
+.ld-split.is-expanded .ld-drawer { flex: 1 1 auto; width: 100%; max-width: none; }
+/* .content caps out at 1440px and centers on very wide monitors. The old
+   fixed/full-screen drawer ignored that (it painted over the whole viewport,
+   edge to edge), so this never showed. Now that the panel sits inside the
+   page, that cap leaves a bare strip of the app background to its right
+   whenever the panel is open — let the page use the full available width in
+   that case so the panel still reaches the true edge. */
+.content:has(.ld-drawer) { max-width: none; }
+
+/* ---------- detail sheet (iOS grouped list) ---------- */
+.ld-drawer { position: sticky; top: calc(var(--app-topbar-height, 0px) + 12px); z-index: 2; flex: 0 0 380px; width: 380px; max-width: 380px; max-height: calc(100vh - var(--app-topbar-height, 0px) - 24px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--ld-r-card); background: var(--ld-sheet); color: var(--text); box-shadow: var(--shadow-lg); animation: ld-fade .2s ease both; }
+@keyframes ld-sheet { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ld-fade { from { opacity: 0; } to { opacity: 1; } }
+.ld-drawer-head { position: relative; display: flex; align-items: center; gap: 16px; padding: 22px 22px 16px; }
+.ld-drawer-title { flex: 1; min-width: 0; }
+.ld-drawer-name { padding-right: 72px; font-size: 22px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; overflow-wrap: anywhere; }
+.ld-drawer-sub { margin-top: 3px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.ld-drawer-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.ld-drawer-close { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--ld-fill-2); color: var(--muted); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.ld-drawer-close:hover { background: color-mix(in srgb, var(--text) 16%, transparent); color: var(--text); }
+.ld-drawer-expand { position: absolute; top: 14px; right: 54px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: var(--ld-fill-2); color: var(--muted); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.ld-drawer-expand:hover { background: color-mix(in srgb, var(--text) 16%, transparent); color: var(--text); }
+.ld-drawer.is-expanded .ld-drawer-expand { background: color-mix(in srgb, var(--c-blue) 18%, transparent); color: var(--c-blue); }
+.ld-drawer-body { display: grid; flex: 1; align-content: start; gap: 22px; padding: 4px 16px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.ld-drawer-foot { display: grid; gap: 8px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: color-mix(in srgb, var(--ld-sheet) 88%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+.ld-foot-row { display: flex; gap: 8px; }
+.ld-foot-row .ld-btn { flex: 1; }
+
+.ld-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ld-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 64px; padding: 10px 6px; border: 0; border-radius: 14px; background: var(--ld-card); color: var(--c-blue); font: inherit; font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; text-decoration: none; text-wrap: balance; cursor: pointer; transition: transform .15s var(--ease-ios, ease), background-color .15s ease; }
+.ld-action:active { transform: scale(.96); }
+.ld-action svg { flex: none; }
+.ld-action.is-off { color: var(--muted-2); cursor: default; pointer-events: none; }
+.ld-callout { padding: 12px 14px; border-radius: 14px; font-size: 13px; line-height: 1.45; }
+.ld-callout.is-blue { background: color-mix(in srgb, var(--c-blue) 12%, transparent); }
+.ld-callout.is-orange { background: color-mix(in srgb, var(--c-orange) 14%, transparent); }
+
+.ld-group { display: grid; gap: 8px; }
+.ld-group-title { margin: 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.ld-group-card { padding: 14px; border-radius: 16px; background: var(--ld-card); }
+.ld-group-card.is-flush { padding: 0; overflow: hidden; }
+.ld-group-footer { margin: 0 8px; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+.ld-cell { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 0 16px; }
+.ld-cell + .ld-cell { border-top: 1px solid var(--line); }
+.ld-cell-label { flex: none; font-size: 14px; color: var(--text); }
+.ld-cell-value { min-width: 0; font-size: 14px; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+.ld-cell-input { flex: 1; min-width: 0; height: 46px; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: right; outline: none; }
+.ld-cell-input::placeholder { color: var(--muted-2); }
+.ld-cell .ld-select-wrap { flex: 1 1 auto; justify-content: flex-end; }
+.ld-cell .ld-select { height: 46px; max-width: 240px; padding: 0 22px 0 0; border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 400; text-align: right; text-align-last: right; }
+.ld-cell .ld-select:hover { background: transparent; }
+.ld-cell .ld-select:focus-visible { box-shadow: none; }
+.ld-cell .ld-select-chev { right: 0; }
+.ld-factor .is-pos { color: var(--c-green); font-variant-numeric: tabular-nums; }
+.ld-factor .is-neg { color: var(--c-red); font-variant-numeric: tabular-nums; }
+
+.ld-input { width: 100%; height: 40px; margin-top: 10px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: var(--ld-fill); color: var(--text); font: inherit; font-size: 14px; outline: none; box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.ld-input::placeholder { color: var(--muted-2); }
+.ld-input:focus { background: var(--ld-card); border-color: var(--c-blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-blue) 16%, transparent); }
+.ld-stepper { display: flex; flex-wrap: wrap; gap: 6px; }
+.ld-step { --pill: var(--c-blue); height: 32px; padding: 0 13px; border: 0; border-radius: 999px; background: var(--ld-fill); color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.ld-step:hover:not(.is-active) { background: var(--ld-fill-2); color: var(--text); }
+.ld-step.is-active { background: color-mix(in srgb, var(--pill) 20%, transparent); color: var(--pill); box-shadow: inset 0 0 0 1.5px var(--pill); }
+.ld-next { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.ld-next > svg { flex: none; color: var(--muted); }
+.ld-next span { flex: 1; }
+.ld-next.is-overdue { color: var(--c-red); }
+.ld-next.is-overdue > svg { color: var(--c-red); }
+.ld-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ld-chips.is-first { margin-top: 0; }
+.ld-tag { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--ld-fill); font-size: 12.5px; font-weight: 600; }
+.ld-tag button { display: inline-flex; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.ld-notes { font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ld-note-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.ld-note-row .ld-input { margin-top: 0; }
+.ld-timeline { display: grid; margin-left: 5px; border-left: 2px solid var(--line); }
+.ld-tl { position: relative; padding: 6px 0 12px 16px; }
+.ld-tl:last-child { padding-bottom: 2px; }
+.ld-tl::before { content: ''; position: absolute; left: -6px; top: 11px; width: 10px; height: 10px; border: 2px solid var(--ld-card); border-radius: 50%; background: var(--c-gray); }
+.ld-tl.is-call::before { background: var(--c-green); } .ld-tl.is-converted::before { background: var(--c-purple); } .ld-tl.is-status_change::before { background: var(--c-blue); } .ld-tl.is-note::before { background: var(--c-orange); }
+.ld-tl-meta { font-size: 11.5px; color: var(--muted); }
+.ld-tl-body { margin-top: 2px; font-size: 13.5px; line-height: 1.45; }
+
+/* ---------- dashboard extras (used by LeadsDashboardPro) ---------- */
+.ld-dash { display: grid; gap: 16px; }
+.ld-dash > .dx-grid { margin: 0; }
+.ld-stage-prob { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 12px; color: var(--muted); }
+.ld-stage-prob b { color: var(--text); }
+.ld-count-btn { min-width: 36px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; font: inherit; font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+.ld-count-btn.is-red { background: color-mix(in srgb, var(--c-red) 16%, transparent); color: var(--c-red); }
+.ld-count-btn.is-orange { background: color-mix(in srgb, var(--c-orange) 16%, transparent); color: var(--c-orange); }
+.ld-count-btn.is-blue { background: color-mix(in srgb, var(--c-blue) 15%, transparent); color: var(--c-blue); }
+.ld-count-btn.is-none { background: var(--ld-fill); color: var(--muted-2); cursor: default; }
+.ld-mini-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 13px; }
+.ld-mini-table th { padding: 0 6px 8px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: left; white-space: nowrap; }
+.ld-mini-table td { padding: 9px 6px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ld-mini-table tr.is-click { cursor: pointer; }
+.ld-mini-table tr.is-click:hover td { background: var(--surface-hover, var(--ld-fill)); }
+.ld-mini-table .is-bad { color: var(--c-red); font-weight: 700; }
+.ld-empty-cell { text-align: center; color: var(--muted-2); }
+.ld-dash .ld-table-scroll { overflow-x: auto; }
+
+/* ---------- phones ---------- */
+@media (max-width: 700px) {
+  .ld-toolbar { padding: 12px; gap: 12px; }
+  .ld-searchbox { flex: 1 1 100%; }
+  .ld-searchbox input, .ld-input, .ld-cell-input, .ld-select { font-size: 16px; }
+  .ld-selects { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .ld-selects .ld-select-wrap, .ld-selects .ld-select { width: 100%; }
+  .ld-toolbar-row.is-view { flex-direction: column; align-items: stretch; }
+  .ld-toolbar-row.is-view .ld-seg { display: flex; }
+  .ld-toolbar-row.is-view .ld-seg button { flex: 1; justify-content: center; }
+  .ld-toolbar-row.is-view .ld-chip { align-self: flex-start; }
+  .ld-board { grid-auto-columns: minmax(250px, 84vw); }
+}
+@media (max-width: 900px) {
+  /* Same collapse as the Customers/Vehicles split view: the panel drops out of
+     the sticky side column and becomes a plain block that follows the list,
+     instead of floating over it. */
+  .ld-split { flex-direction: column; align-items: stretch; }
+  /* Full width so the Kanban board scrolls sideways inside itself instead of stretching the page. */
+  .ld-split-main { width: 100%; }
+  .ld-drawer { position: static; top: auto; width: 100%; max-width: none; max-height: none; flex-basis: auto; border-radius: var(--ld-r-card); }
+  .ld-drawer-expand { display: none; }
+}
+@media (max-width: 640px) {
+  .ld-drawer-head { padding: 20px 18px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-drawer { animation: none; }
+}
+
+/* ============================================================
+   iOS refinement — one shape language for everything clickable
+   in Leads: tinted capsules, round icon buttons, equal sizes.
+   Sizes:  status pill 26 × 122 (table)   ·   flag 20 × 44
+           header button 38 × 148          ·   icon button 32 round
+   ============================================================ */
+
+/* Status pill: soft tinted capsule, no bullet, same footprint in every row. */
+.ld-pill {
+  height: 26px; padding: 0 12px; justify-content: center; gap: 0;
+  background: color-mix(in srgb, var(--pill) 14%, transparent);
+  color: color-mix(in srgb, var(--pill) 86%, var(--text));
+  font-size: 12.5px; font-weight: 600; letter-spacing: -.01em;
+}
+.ld-pill::before { display: none; }
+.ld-page .ld-table .ld-pill, .ld-page .ld-table-scroll .ld-pill { width: 122px; padding: 0 8px; }
+
+/* Flags (SLA / задача / завис): identical height and minimum width. */
+.ld-flag {
+  height: 20px; width: 44px; padding: 0; justify-content: center; box-sizing: border-box;
+  border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+.ld-flag.is-red { background: color-mix(in srgb, var(--c-red) 13%, transparent); color: var(--c-red); }
+.ld-flag.is-orange { background: color-mix(in srgb, var(--c-orange) 14%, transparent); color: var(--c-orange); }
+.ld-flag.is-blue { background: color-mix(in srgb, var(--c-blue) 13%, transparent); color: var(--c-blue); }
+.ld-drawer-badges .ld-flag { height: 22px; width: 54px; font-size: 11px; }
+
+
+/* Score: a little more air, rounder track. */
+.ld-score { gap: 10px; }
+.ld-score-bar { width: 40px; height: 5px; }
+
+/* Source dot: quieter. */
+.ld-dot { width: 7px; height: 7px; margin-right: 7px; }
+
+/* Round icon buttons — one size everywhere (row actions, drawer, bulk bar). */
+.ld-icon-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--ld-fill); color: var(--muted);
+  transition: background-color .15s ease, color .15s ease, transform .18s var(--ease-ios, ease);
+}
+.ld-icon-btn:hover { background: var(--ld-fill-2); color: var(--text); }
+.ld-icon-btn:active { transform: scale(.92); }
+.ld-row-actions { gap: 8px; }
+.ld-row-actions .ld-icon-btn, .ld-td-actions .ld-icon-btn {
+  background: color-mix(in srgb, var(--c-blue) 14%, transparent); color: var(--c-blue);
+}
+.ld-row-actions .ld-icon-btn:hover, .ld-td-actions .ld-icon-btn:hover { background: color-mix(in srgb, var(--c-blue) 24%, transparent); color: var(--c-blue); }
+.ld-row-actions .ld-icon-btn[title="Выполнено"], .ld-td-actions .ld-icon-btn[title="Выполнено"] {
+  background: color-mix(in srgb, var(--c-green) 15%, transparent); color: var(--c-green);
+}
+.ld-row-actions .ld-icon-btn[title="Выполнено"]:hover, .ld-td-actions .ld-icon-btn[title="Выполнено"]:hover { background: color-mix(in srgb, var(--c-green) 25%, transparent); }
+
+/* Selected row: quiet system-blue wash instead of the red accent + left bar. */
+.ld-page .ld-table tbody tr.selected { background: transparent !important; border-color: transparent !important; }
+.ld-page .ld-table tbody tr.selected td { background: color-mix(in srgb, var(--c-blue) 10%, transparent); }
+.ld-page .ld-table tbody tr.selected td:first-child { box-shadow: none; }
+
+/* Header buttons: same height, same width, same shape. */
+.ld-page .header-row .tag-row { gap: 10px; }
+.ld-page .header-row .tag-row .tag {
+  box-sizing: border-box; justify-content: center; height: 38px; min-width: 148px; padding: 0 18px;
+  border: 0; border-radius: 999px;
+  background: var(--ld-fill); color: var(--text);
+  font-size: 13.5px; font-weight: 600; letter-spacing: -.01em;
+}
+.ld-page .header-row .tag-row .tag:hover { background: var(--ld-fill-2); color: var(--text); }
+.ld-page .header-row .tag-row .tag.add { background: var(--c-blue); color: #fff; }
+.ld-page .header-row .tag-row .tag.add:hover { background: var(--c-blue); color: #fff; filter: brightness(1.08); }
+.ld-page .header-row .tag-row .tag:active { transform: scale(.97); }
+
+/* Toolbar chips / segmented controls: same 32px height, tinted instead of outlined. */
+.ld-chip { height: 32px; border: 0; background: var(--ld-fill); }
+.ld-chip:hover:not(:disabled):not(.is-active) { background: var(--ld-fill-2); }
+.ld-chip.is-ghost { border: 0; color: var(--c-blue); background: color-mix(in srgb, var(--c-blue) 12%, transparent); }
+.ld-chip.is-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--c-blue) 20%, transparent); }
+.ld-btn { height: 38px; border-radius: 999px; }
+.ld-btn.is-block { border-radius: 14px; }
+.ld-btn:active:not(:disabled) { transform: scale(.97); }
+.ld-btn.is-primary { background: var(--c-blue); color: #fff; }
+.ld-btn.is-primary:hover:not(:disabled) { background: var(--c-blue); opacity: 1; filter: brightness(1.08); }
+
+@media (max-width: 640px) {
+  .ld-page .header-row .tag-row .tag { min-width: 0; flex: 1 1 calc(50% - 5px); }
+}
+.ld-flag.is-wide, .ld-drawer-badges .ld-flag.is-wide { width: auto; padding: 0 10px; }
+.ld-flags .ld-flag:not([class*='is-']) { width: 30px; }
+
+/* Tablet / phone: the generic page header stacks in a column with centered items,
+   which floated the title block into the middle of the card. Left-align it. */
+@media (max-width: 1023px) {
+  .ld-page .header-row { align-items: stretch; }
+}
+
+/* Same tint for the same action everywhere (table rows, Tasks view, Kanban). */
+.ld-page .ld-icon-btn[title="Позвонить"], .ld-page .ld-icon-btn[title="Следующий этап"] {
+  background: color-mix(in srgb, var(--c-blue) 14%, transparent); color: var(--c-blue);
+}
+.ld-page .ld-icon-btn[title="Позвонить"]:hover, .ld-page .ld-icon-btn[title="Следующий этап"]:hover { background: color-mix(in srgb, var(--c-blue) 24%, transparent); }
+.ld-page .ld-icon-btn[title="Выполнено"] { background: color-mix(in srgb, var(--c-green) 15%, transparent); color: var(--c-green); }
+.ld-page .ld-icon-btn[title="Выполнено"]:hover { background: color-mix(in srgb, var(--c-green) 25%, transparent); }
+
+/* Bulk bar: equal button widths, matching 36px round close button. */
+.ld-bulk .ld-btn { width: 108px; padding: 0 8px; }
+.ld-bulk .ld-icon-btn { width: 36px; height: 36px; }
+.ld-bulk .ld-select-wrap { flex: 0 0 176px; }
+
+/* Badges: a little air between neighbours. */
+.ld-flags { gap: 6px; }
+
+/* Desktop: the page scrolls inside its own container that already starts below the
+   top bar, so the drawer must stick to the top of THAT container. Adding the bar
+   height again pushed it ~150px down and cut its action bar off the screen. */
+@media (min-width: 1024px) {
+  .ld-drawer { top: 0; max-height: calc(100dvh - var(--app-topbar-height, 0px) - 24px); }
+}
+
+/* Landing spot for "scroll the opened lead into view" (clears the top bar). */
+.ld-split, .ld-drawer { scroll-margin-top: 16px; }
+@media (max-width: 1023px) { .ld-split, .ld-drawer { scroll-margin-top: 76px; } }
+
+/* Phone rows: status pill is the same size as in the table. */
+.ld-mrow-side .ld-pill { width: 122px; padding: 0 8px; }
+
+/* Source badge: iOS-style squircle tile (see SourceIcon.tsx). */
+.ld-src-tile { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; margin-right: 7px; border-radius: 6px; vertical-align: -4px; flex: none; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.22), 0 1px 2px rgba(0,0,0,.25); }
+.ld-src-tile svg { display: block; }
+
+/* Lead row: checkbox nudged right, avatar hugging the name. */
+.ld-lead-cell { gap: 12px; padding-left: 0; }
+.ld-page .ld-table tbody td:first-child, .ld-page .ld-table thead th:first-child { padding-left: 16px; }
+.ld-page .ld-table .ld-th-check, .ld-page .ld-table .ld-td-check { padding-left: 24px; padding-right: 0; }

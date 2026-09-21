@@ -1,0 +1,228 @@
+/* =============================================================================
+   TOP NAVIGATION — Apple style (loaded last, wins over older layers)
+   Left: search. Right: one evenly spaced cluster — Почта · Оповещения · Настройки · статус | Быстрое действие · Профиль.
+   8 px between neighbours, 34 px controls, hairline divider, frosted glass, aligned with page content and sidebar.
+   ============================================================================= */
+:root{ --tb-h:56px; --tb-ctl:34px; --tb-gap:8px; --tb-pad:32px; }
+
+.main-area > .topbar{
+  height:var(--tb-h); min-height:var(--tb-h); max-height:var(--tb-h); box-sizing:border-box;
+  padding:0 var(--tb-pad) !important; gap:16px;
+  display:flex; align-items:center;
+  background:color-mix(in srgb, var(--panel) 74%, transparent) !important;
+  -webkit-backdrop-filter:saturate(180%) blur(24px); backdrop-filter:saturate(180%) blur(24px);
+  border-bottom:1px solid var(--line) !important; box-shadow:none;
+}
+
+/* ---- left: search ---- */
+.main-area > .topbar .topbar-tools-row{ flex:1 1 auto; min-width:0; max-width:360px; margin:0; gap:0; }
+.main-area > .topbar .global-search{ flex:1 1 auto; min-width:0; max-width:none; width:100%; position:relative; }
+.main-area > .topbar .global-search-input,
+.main-area > .topbar .search-input{
+  height:var(--tb-ctl); width:100%; box-sizing:border-box; padding:0 12px 0 34px !important;
+  font-size:13.5px; font-family:inherit; color:var(--text);
+  background-color:color-mix(in srgb, var(--text) 6%, transparent) !important;
+  border:1px solid transparent !important; border-radius:10px !important;
+  transition:background-color .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.main-area > .topbar .global-search::before{
+  content:''; position:absolute; left:11px; top:50%; width:16px; height:16px; transform:translateY(-50%); pointer-events:none; z-index:1; opacity:.9;
+  background:no-repeat center/16px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+}
+.main-area > .topbar .global-search-input::placeholder{ color:var(--muted-2); }
+.main-area > .topbar .global-search-input:focus{
+  background-color:var(--panel) !important; border-color:color-mix(in srgb, var(--info, #0a84ff) 55%, transparent) !important;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--info, #0a84ff) 22%, transparent) !important; outline:none;
+}
+
+/* ---- right: one cluster, everything pushed to the right edge ---- */
+.main-area > .topbar .topbar-right{
+  margin-left:auto; display:flex; align-items:center; flex-wrap:nowrap; gap:var(--tb-gap); flex-shrink:0; min-width:0;
+}
+.main-area > .topbar .topbar-extras{ display:contents; }
+
+/* round icon controls: mail, alerts, settings, admin */
+.main-area > .topbar .topbar-btn,
+.main-area > .topbar .topbar-settings-btn,
+.main-area > .topbar .topbar-icon-btn,
+.main-area > .topbar .outlook-mail-topbar-btn,
+.main-area > .topbar .admin-settings-btn{
+  position:relative; width:var(--tb-ctl); height:var(--tb-ctl); min-width:var(--tb-ctl); min-height:var(--tb-ctl); max-height:var(--tb-ctl);
+  padding:0; margin:0; box-sizing:border-box; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  color:var(--muted) !important; background:transparent !important; border:none !important; border-radius:50% !important; box-shadow:none !important;
+  cursor:pointer; transition:background-color .16s ease, color .16s ease, transform .16s ease;
+}
+.main-area > .topbar .topbar-btn:hover,
+.main-area > .topbar .topbar-settings-btn:hover,
+.main-area > .topbar .topbar-icon-btn:hover,
+.main-area > .topbar .outlook-mail-topbar-btn:hover,
+.main-area > .topbar .admin-settings-btn:hover,
+.main-area > .topbar .admin-settings-btn[aria-expanded='true'],
+.main-area > .topbar .topbar-icon-btn[aria-expanded='true'],
+.main-area > .topbar .outlook-mail-topbar-btn[aria-expanded='true']{
+  background:color-mix(in srgb, var(--text) 8%, transparent) !important; color:var(--text) !important;
+}
+.main-area > .topbar .topbar-btn:active,
+.main-area > .topbar .topbar-icon-btn:active,
+.main-area > .topbar .outlook-mail-topbar-btn:active{ transform:scale(.92); }
+.main-area > .topbar .topbar-btn svg,
+.main-area > .topbar .topbar-icon-btn svg,
+.main-area > .topbar .outlook-mail-topbar-btn svg{ width:19px; height:19px; }
+
+/* wrappers must not add their own spacing */
+.main-area > .topbar .outlook-mail-topbar-wrap,
+.main-area > .topbar .alerts-wrap,
+.main-area > .topbar .admin-settings-wrap,
+.main-area > .topbar .user-menu-wrap,
+.main-area > .topbar .qa-wrap{ margin:0; display:flex; align-items:center; position:relative; flex-shrink:0; }
+
+/* counters: small red badge on the icon's corner, ringed so it reads on any background */
+.main-area > .topbar .outlook-mail-topbar-badge,
+.main-area > .topbar .alerts-badge{
+  position:absolute; top:-1px; right:-3px; left:auto; bottom:auto; transform:none; margin:0;
+  min-width:16px; height:16px; padding:0 4px; box-sizing:border-box;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:10px; line-height:16px; font-weight:600; letter-spacing:0; color:#fff;
+  background:var(--red, #ff3b30); border:none; border-radius:999px; box-shadow:0 0 0 2px var(--panel);
+  pointer-events:none;
+}
+
+/* status chip (backup) — quiet text chip, not a button */
+.main-area > .topbar .topbar-extras .pill:not(.qa){
+  height:28px; padding:0 11px; margin:0 4px 0 2px; font-size:12px; font-weight:500; letter-spacing:0; line-height:1;
+  color:var(--muted); background:color-mix(in srgb, var(--text) 6%, transparent); border:none; border-radius:999px; gap:7px;
+}
+.main-area > .topbar .topbar-extras .pill:not(.qa):hover{ background:color-mix(in srgb, var(--text) 10%, transparent); color:var(--text); }
+
+/* divider between the icon group and the primary actions */
+.main-area > .topbar .qa-wrap{ margin-left:8px; padding-left:16px; }
+.main-area > .topbar .qa-wrap::before{
+  content:''; position:absolute; left:0; top:50%; height:20px; width:1px; transform:translateY(-50%); background:var(--line-strong, var(--line));
+}
+
+/* primary action */
+.main-area > .topbar .pill.qa{
+  height:var(--tb-ctl); padding:0 14px; margin:0; gap:6px; box-sizing:border-box;
+  font-size:13px; font-weight:600; letter-spacing:0; line-height:1;
+  color:var(--bg, #fff) !important; background:var(--text) !important; border:none !important; border-radius:999px;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:opacity .16s ease, transform .16s ease;
+}
+.main-area > .topbar .pill.qa:hover{ opacity:.86; }
+.main-area > .topbar .pill.qa:active{ transform:scale(.97); }
+.main-area > .topbar .qa-icon{ font-size:16px; font-weight:500; line-height:1; margin-top:-1px; }
+
+/* profile */
+.main-area > .topbar .user-menu-trigger{
+  height:var(--tb-ctl); padding:0 10px 0 3px; margin:0; gap:8px; box-sizing:border-box;
+  display:inline-flex; align-items:center; background:transparent !important; border:none !important; border-radius:999px !important; box-shadow:none !important;
+  color:var(--text); font-size:13px; font-weight:500; cursor:pointer; transition:background-color .16s ease;
+}
+.main-area > .topbar .user-menu-trigger:hover{ background:color-mix(in srgb, var(--text) 7%, transparent) !important; }
+.main-area > .topbar .user-menu-avatar{ width:28px; height:28px; min-width:28px; font-size:11px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; }
+.main-area > .topbar .user-menu-name{ line-height:1; }
+.main-area > .topbar .user-menu-chevron{ display:inline-flex; color:var(--muted-2); }
+
+/* dropdowns open under their trigger, aligned to the right edge */
+.main-area > .topbar .qa-menu, .main-area > .topbar .user-menu-dropdown, .main-area > .topbar .admin-settings-dropdown,
+.main-area > .topbar .alerts-menu, .main-area > .topbar .outlook-mail-topbar-menu{ top:calc(100% + 10px); right:0; left:auto; }
+
+/* narrower windows: drop the chip first, then the label */
+@media (max-width:1280px){
+  .main-area > .topbar .topbar-extras .pill:not(.qa){ display:none; }
+  .main-area > .topbar .qa-label{ display:none; }
+  .main-area > .topbar .pill.qa{ width:var(--tb-ctl); min-width:var(--tb-ctl); padding:0; }
+}
+@media (max-width:1100px){ .main-area > .topbar .user-menu-name{ display:none; } .main-area > .topbar .user-menu-trigger{ padding:0 6px 0 3px; } }
+
+/* sidebar logo divider lines up with the top bar's bottom edge (desktop, expanded) */
+@media (min-width:901px){
+  .sidebar:not(.sidebar--rail) .sidebar-head{ box-sizing:border-box; height:calc(var(--tb-h) - 16px); padding:0 6px; margin-bottom:14px; }
+}
+
+/* =============================================================================
+   v2 — the WHOLE top panel sits on the right (search included), iOS-style.
+   Left side is intentionally empty. Search is a compact iOS field that widens on focus.
+   ============================================================================= */
+.main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row{
+  flex:0 0 auto; width:232px; max-width:none; margin-left:auto; margin-right:4px;
+  transition:width .28s cubic-bezier(.32,.72,0,1);
+}
+.main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row:focus-within{ width:320px; }
+.main-area > .topbar:not(.topbar--mobile-minimal) .topbar-right{ margin-left:0; }
+
+/* iOS search field: system-gray translucent fill, 10 px radius */
+.main-area > .topbar .global-search-input,
+.main-area > .topbar .search-input{
+  background-color:rgba(118,118,128,.12) !important; border-radius:10px !important; height:34px; font-size:14px;
+}
+html[data-theme='dark'] .main-area > .topbar .global-search-input,
+html[data-theme='dark'] .main-area > .topbar .search-input{ background-color:rgba(118,118,128,.24) !important; }
+.main-area > .topbar .global-search-input:focus{ background-color:rgba(118,118,128,.18) !important; }
+
+/* search results open under the field, right-aligned to the panel edge */
+.main-area > .topbar .global-search-results{ left:auto; right:0; width:min(420px, calc(100vw - 48px)); min-width:320px; top:calc(100% + 8px); }
+
+/* icons: iOS toolbar weight — near-text colour, tinted hover */
+.main-area > .topbar .topbar-btn,
+.main-area > .topbar .topbar-settings-btn,
+.main-area > .topbar .topbar-icon-btn,
+.main-area > .topbar .outlook-mail-topbar-btn,
+.main-area > .topbar .admin-settings-btn{ color:color-mix(in srgb, var(--text) 78%, transparent) !important; }
+
+@media (max-width:1100px){
+  .main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row{ width:190px; }
+  .main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row:focus-within{ width:260px; }
+}
+
+/* =============================================================================
+   v3 — search stretches to the LEFT (fills the free space up to the icon cluster);
+   sidebar logo header is exactly as tall as the top bar, logo centred and nudged up,
+   divider lines up pixel-for-pixel with the top bar's bottom border.
+   ============================================================================= */
+.main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row{
+  flex:1 1 auto; width:auto; min-width:220px; max-width:880px; margin-left:auto; margin-right:4px;
+  transition:none;
+}
+.main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row:focus-within{ width:auto; }
+.main-area > .topbar .global-search-results{ left:0; right:0; width:auto; min-width:0; }
+@media (max-width:1100px){
+  .main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row,
+  .main-area > .topbar:not(.topbar--mobile-minimal) .topbar-tools-row:focus-within{ width:auto; min-width:160px; }
+}
+
+@media (min-width:901px){
+  .sidebar .sidebar-scroll{ padding-top:0; }
+  .sidebar .sidebar-head,
+  .sidebar:not(.sidebar--rail) .sidebar-head{
+    box-sizing:border-box; height:var(--tb-h); min-height:var(--tb-h);
+    margin:0 -14px 14px; padding:0 14px 0 20px;
+    border-bottom:1px solid var(--sb-line);
+    align-items:center;
+  }
+  .sidebar .sidebar-head .brand-link{ padding:0 6px 5px; align-self:center; }
+  .sidebar .sidebar-head .brand img{ display:block; }
+  .sidebar .sidebar-head .sidebar-collapse-btn{ align-self:center; margin-left:auto; }
+  /* collapsed rail: logo mark + the expand button side by side, both always visible */
+  .sidebar.sidebar--rail .sidebar-head{
+    flex-direction:row; justify-content:center; gap:2px; margin:0 -12px 14px; padding:0 6px;
+  }
+  .sidebar.sidebar--rail .sidebar-head .sidebar-collapse-btn{ display:none; } /* expand button lives in the top bar, before the search */
+  .sidebar.sidebar--rail .sidebar-head .brand-link{ padding:0; flex:none; }
+}
+
+/* expand-navigation button: top bar, directly before the search (shown only while the sidebar is collapsed) */
+.main-area > .topbar .topbar-nav-toggle{
+  flex:0 0 auto; width:var(--tb-ctl); height:var(--tb-ctl); margin:0 -4px 0 0; padding:0; box-sizing:border-box;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+  color:color-mix(in srgb, var(--text) 78%, transparent); background:transparent; border:none; border-radius:10px;
+  transition:background-color .16s ease, color .16s ease, transform .16s ease;
+}
+.main-area > .topbar .topbar-nav-toggle:hover{ background:color-mix(in srgb, var(--text) 8%, transparent); color:var(--text); }
+.main-area > .topbar .topbar-nav-toggle:active{ transform:scale(.92); }
+.main-area > .topbar .topbar-nav-toggle:focus-visible{ outline:2px solid var(--info, #0a84ff); outline-offset:2px; }
+@media (max-width:1023px){ .main-area > .topbar .topbar-nav-toggle{ display:none; } }
+
+/* collapsed-sidebar logo mark (U + red line) */
+.sidebar .sidebar-mark{ width:34px; height:34px; border-radius:0; object-fit:contain; background:transparent; }

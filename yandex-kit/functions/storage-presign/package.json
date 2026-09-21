@@ -1,0 +1,12 @@
+{
+  "name": "uo-storage-presign",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.mjs",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.679.0",
+    "@aws-sdk/s3-request-presigner": "^3.679.0",
+    "jose": "^5.9.6"
+  }
+}

@@ -1,0 +1,110 @@
+# Self-hosted Supabase stack (Auth/GoTrue, PostgREST, Realtime, Storage, Kong)
+# pointed at an external Yandex Managed PostgreSQL instance — no local db container.
+# Fill in .env.yandex (copy from .env.yandex.example) before running.
+#
+#   docker compose --env-file .env.yandex up -d
+#
+# This does NOT touch your live Supabase project. Point it at a fresh,
+# empty Yandex Managed PostgreSQL database first and verify boot + schema
+# migration before anything real depends on it.
+
+version: "3.8"
+
+services:
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    ports:
+      - "8000:8000"   # API gateway — this is what VITE_SUPABASE_URL will point at
+      - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    volumes:
+      - ./kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      - auth
+      - rest
+      - realtime
+      - storage
+
+  auth:
+    image: supabase/gotrue:v2.158.1
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: ${DATABASE_URL}
+      GOTRUE_SITE_URL: ${APP_URL}
+      GOTRUE_URI_ALLOW_LIST: ${APP_URL}
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_MFA_ENABLED: "true"
+      # Password reset / invite emails — routed through Postbox SMTP,
+      # matching the resetPasswordForEmail() calls already in the frontend.
+      GOTRUE_SMTP_HOST: ${POSTBOX_SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${POSTBOX_SMTP_PORT}
+      GOTRUE_SMTP_USER: ${POSTBOX_SMTP_USER}
+      GOTRUE_SMTP_PASS: ${POSTBOX_SMTP_PASSWORD}
+      GOTRUE_SMTP_SENDER_NAME: ${COMPANY_NAME}
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: ${DATABASE_URL}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+
+  realtime:
+    image: supabase/realtime:v2.30.34
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${PG_HOST}
+      DB_PORT: ${PG_PORT}
+      DB_NAME: ${PG_DATABASE}
+      DB_USER: ${PG_USER}
+      DB_PASSWORD: ${PG_PASSWORD}
+      DB_SSL: "true"
+      JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${REALTIME_SECRET_KEY_BASE}
+      PORT: 4000
+
+  storage:
+    image: supabase/storage-api:v1.11.13
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      PROJECT_REF: unique-operations
+      DATABASE_URL: ${DATABASE_URL}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      FILE_SIZE_LIMIT: 52428800
+      # Legacy Supabase Storage buckets (customer-photos, vehicle-photos,
+      # job-photos, documents) backed by Yandex Object Storage, S3-compatible.
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${YC_STORAGE_BUCKET}
+      REGION: ru-central1
+      GLOBAL_S3_ENDPOINT: https://storage.yandexcloud.net
+      AWS_ACCESS_KEY_ID: ${YC_STORAGE_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${YC_STORAGE_SECRET_KEY}
+      FORCE_PATH_STYLE: "true"
+    depends_on:
+      - rest
+
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    restart: unless-stopped
+    environment:
+      PG_META_DB_HOST: ${PG_HOST}
+      PG_META_DB_PORT: ${PG_PORT}
+      PG_META_DB_NAME: ${PG_DATABASE}
+      PG_META_DB_USER: ${PG_USER}
+      PG_META_DB_PASSWORD: ${PG_PASSWORD}
